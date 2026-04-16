@@ -46,8 +46,8 @@ Pre-extracted features for each dataset can be downloaded here:
 
 | Dataset | Features |
 |---|---|
-| PHOENIX2014T | [link]() |
-| CSL-Daily | [link]() |
+| PHOENIX2014T | [link](https://connectpolyu-my.sharepoint.com/:f:/g/personal/25014758r_connect_polyu_hk/IgAnU8PHNGn6Q4jCLm6Yb5UKAfZzqYeZVYgwXWpL_jKey2E?e=YZbi5R) |
+| CSL-Daily | [link](https://connectpolyu-my.sharepoint.com/:f:/g/personal/25014758r_connect_polyu_hk/IgAnU8PHNGn6Q4jCLm6Yb5UKAfZzqYeZVYgwXWpL_jKey2E?e=YZbi5R) |
 
 Download the Pre-extracted features from the links below and place them under `data/`:
 
