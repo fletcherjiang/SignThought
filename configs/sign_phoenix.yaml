@@ -1,0 +1,115 @@
+name: sign_experiment
+data:
+    data_path: ./data/
+    version: phoenix_2014_trans
+    sgn: sign
+    txt: text
+    train: PHOENIX2014T/phoenix14t.train
+    dev:   PHOENIX2014T/phoenix14t.dev
+    test:  PHOENIX2014T/phoenix14t.test
+    feature_size: 1024
+    level: word
+    txt_lowercase: true
+    max_sent_length: 400
+    random_train_subset: -1
+    random_dev_subset: -1
+    multimodal: 0.0
+testing:
+    translation_beam_sizes:
+    - 7
+    translation_beam_alphas:
+    - 4
+training:
+    reset_best_ckpt: false
+    reset_scheduler: false
+    reset_optimizer: false
+    random_seed: 42
+    model_dir: "experiment_results/phoenix14t_auto"
+    translation_loss_weight: 1.0
+    eval_metric: bleu
+    optimizer: adamw
+    learning_rate: 0.001
+    batch_size: 32
+    num_valid_log: 6
+    epochs: 200
+    early_stopping_metric: eval_metric
+    batch_type: sentence
+    translation_normalization: batch
+    eval_translation_beam_size: 7
+    eval_translation_beam_alpha: 4
+    overwrite: true
+    shuffle: true
+    use_cuda: true
+    translation_max_output_length: 30
+    keep_last_ckpts: 1
+    batch_multiplier: 1
+    logging_freq: 100
+    validation_freq: 200
+    betas:
+    - 0.95
+    - 0.998
+    scheduling: plateau
+    learning_rate_min: 1.0e-06
+    weight_decay: 0.003
+    patience: 30
+    decrease_factor: 0.8
+    label_smoothing: 0.1
+    warmup_step: 2000
+    lambda_mono: 0.1
+    lambda_cont: 0.2
+    mono_margin: 1.0
+    wandb:
+        enabled: true
+        project: slt
+        run_name: phoenix14t
+        watch: gradients
+model:
+    initializer: xavier
+    bias_initializer: zeros
+    init_gain: 1.0
+    embed_initializer: xavier
+    embed_init_gain: 1.0
+    tied_softmax: false
+    encoder:
+        type: transformer
+        num_layers: 1
+        num_heads: 8
+        embeddings:
+            embedding_dim: 256
+            scale: false
+            dropout: 0.1
+            norm_type: batch
+            activation_type: softsign
+        hidden_size: 256
+        ff_size: 1024
+        dropout: 0.1
+    decoder:
+        type: transformer
+        num_layers: 1
+        num_heads: 8
+        embeddings:
+            embedding_dim: 256
+            scale: false
+            dropout: 0.1
+            norm_type: batch
+            activation_type: softsign
+        hidden_size: 256
+        ff_size: 1024
+        dropout: 0.1
+thinking:
+    K: 8
+    num_segments: 8
+    num_layers: 2
+    num_heads: 8
+    hidden_size: 256
+    ff_size: 1024
+    dropout: 0.1
+    causal_self_attn: true
+    sinkhorn_iters: 5
+    sinkhorn_tau: 1.0
+    segmentation_temperature: 0.08
+    retrieval_mode: dense
+    sparse_topk: 0
+    deformable_radius: 2
+    enable_decoder_routing: true
+    routing_bias_scale: 1.0
