@@ -102,10 +102,13 @@ Key parameters can be modified in the yaml files under `configs/`:
 ## Citation
 
 ```bibtex
-@inproceedings{jiang2026signthought,
-  title     = {Think in Latent Thoughts: A New Paradigm for Gloss-Free Sign Language Translation},
-  author    = {Yiyang Jiang and Li Zhang and Xiaoyong Wei and Qing Li},
-  booktitle = {ACL 2026},
-  year      = {2026}
+@misc{jiang2026thinklatentthoughtsnew,
+      title={Think in Latent Thoughts: A New Paradigm for Gloss-Free Sign Language Translation}, 
+      author={Yiyang Jiang and Li Zhang and Xiao-Yong Wei and Li Qing},
+      year={2026},
+      eprint={2604.15301},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2604.15301}, 
 }
 ```
