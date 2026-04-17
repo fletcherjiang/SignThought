@@ -4,9 +4,9 @@
 
 
 Traditional SLT treats sign video segments as if they were directly mappable to static spoken-language words. This ignores **Productive Forms** in sign languages, constructions built on-the-fly through classifiers, spatial grammar, and motion modulation that cannot be enumerated as fixed lexical entries. A single "vehicle" handshape may express "park," "crash," or "drive" purely through variations in movement and spatial configuration. SignThought addresses this by introducing three key mechanisms:
-1. **Latent Thought Abstraction** — An ordered set of K learnable thought slots serves as the model's working memory, progressively distilling and organizing meaning from long, continuous visual streams.
-2. **Plan-Ground Decoupling** — Reasoning and grounding are explicitly separated. The model first determines *what* semantic content to express by reasoning over latent thoughts, then decides *where* to retrieve the corresponding visual evidence.
-3. **Traceable Evidence Alignment** — Latent thoughts function as traceable anchors that align generated text with specific temporal regions of the input video, enabling explicit evidence attribution and more faithful translations.
+1. **Latent Thought Abstraction**: An ordered set of K learnable thought slots serves as the model's working memory, progressively distilling and organizing meaning from long, continuous visual streams.
+2. **Plan-Ground Decoupling**: Reasoning and grounding are explicitly separated. The model first determines *what* semantic content to express by reasoning over latent thoughts, then decides *where* to retrieve the corresponding visual evidence.
+3. **Traceable Evidence Alignment**: Latent thoughts function as traceable anchors that align generated text with specific temporal regions of the input video, enabling explicit evidence attribution and more faithful translations.
 
 ![Model Architecture](assets/model.png)
 
