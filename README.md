@@ -46,7 +46,7 @@ Pre-extracted features for each dataset can be downloaded here:
 
 | Dataset | Features |
 |---|---|
-| PHOENIX2014T | [link](https://connectpolyu-my.sharepoint.com/:f:/g/personal/25014758r_connect_polyu_hk/IgAnU8PHNGn6Q4jCLm6Yb5UKAfZzqYeZVYgwXWpL_jKey2E?e=YZbi5R) |
+| PHOENIX2014T | [link](https://1drv.ms/f/c/bb2e0786d9c7e161/IgAFse1hwByCTrmGwykQkYhcATjjLCAP5O7OwWf_oCo1LEs?e=sCruAS) |
 | CSL-Daily | Available upon request after permission is granted by the original dataset owners |
 
 For **CSL-Daily**, due to copyright restrictions, the pre-extracted features are not publicly downloadable. Please first obtain permission from the original dataset owners via the official page: https://ustc-slr.github.io/datasets/2021_csl_daily/. Once permission is granted, please contact us privately, and we will provide the corresponding features.
