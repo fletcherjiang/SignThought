@@ -46,8 +46,6 @@ class ThinkingLayer(nn.Module):
         :param src_mask: [B, 1, Ts] or [B, Ts]
         """
         bsz, steps, _ = thoughts.size()
-
-        # 因果自注意力（可选）
         self_mask = None
         if self.causal_self_attn:
             causal = torch.tril(
@@ -58,8 +56,6 @@ class ThinkingLayer(nn.Module):
         t = self.self_norm(thoughts)
         self_out = self.self_attn(t, t, t, mask=self_mask)
         thoughts = thoughts + self.dropout(self_out)
-
-        # 思维对视频的交叉注意力
         c = self.cross_norm(thoughts)
         cross_out = self.cross_attn(c, memory, memory, mask=src_mask)
         thoughts = thoughts + self.dropout(cross_out)
@@ -95,8 +91,6 @@ class LatentCoT(nn.Module):
         super().__init__()
         self.hidden_size = hidden_size
         self.K = K
-
-        # 分段与对齐相关超参（保留配置，不参与当前前向计算）
         self.num_segments = num_segments
         self.sinkhorn_iters = sinkhorn_iters
         self.sinkhorn_tau = sinkhorn_tau
