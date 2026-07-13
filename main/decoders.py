@@ -530,6 +530,7 @@ class TransformerDecoder(Decoder):
         hidden: Tensor = None,
         trg_mask: Tensor = None,
         thought_states: Tensor = None,
+        thought_routing: dict = None,
         **kwargs
     ):
         """
@@ -568,6 +569,7 @@ class TransformerDecoder(Decoder):
                 trg_mask=trg_mask,
                 thought_memory=thought_states,
                 thought_mask=thought_mask,
+                thought_routing=thought_routing,
             )
 
         x = self.layer_norm(x)

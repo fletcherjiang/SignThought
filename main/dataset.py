@@ -2,18 +2,59 @@
 """
 Data module
 """
+import glob
+import os
+from typing import Tuple
+
+import torch
 from torchtext import data
 from torchtext.data import Field, RawField
-from typing import List, Tuple
-import pickle
-import gzip
-import torch
 
 
-def load_dataset_file(filename):
-    with gzip.open(filename, "rb") as f:
-        loaded_object = pickle.load(f)
-        return loaded_object
+_FEATURE_CACHE_DEVICE = None
+
+
+def feature_cache_device():
+    global _FEATURE_CACHE_DEVICE
+    if _FEATURE_CACHE_DEVICE is None:
+        if torch.cuda.is_available():
+            device_index = torch.cuda.current_device()
+            _FEATURE_CACHE_DEVICE = torch.device(f"cuda:{device_index}")
+            visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "unset")
+            device_name = torch.cuda.get_device_name(device_index)
+            print(
+                "[Data] Feature cache device: "
+                f"{_FEATURE_CACHE_DEVICE} ({device_name}); "
+                f"CUDA_VISIBLE_DEVICES={visible_devices}",
+                flush=True,
+            )
+        else:
+            _FEATURE_CACHE_DEVICE = torch.device("cpu")
+            print("[Data] Feature cache device: cpu (CUDA unavailable)", flush=True)
+    return _FEATURE_CACHE_DEVICE
+
+
+def load_split_dir(dirname):
+    if not os.path.isdir(dirname):
+        raise ValueError(
+            "Expected a directory containing per-video .pt files. "
+            "Legacy .train/.dev/.test split files are no longer supported: "
+            f"{dirname}"
+        )
+
+    sample_files = sorted(glob.glob(os.path.join(dirname, "*.pt")))
+    if not sample_files:
+        raise ValueError(f"No .pt samples found in dataset directory: {dirname}")
+
+    samples = []
+    cache_device = feature_cache_device()
+    for sample_file in sample_files:
+        sample = torch.load(sample_file, map_location=cache_device)
+        missing = {"name", "text"} - set(sample)
+        if missing:
+            raise ValueError(f"{sample_file} is missing required fields: {missing}")
+        samples.append(sample)
+    return samples
 
 
 class SignTranslationDataset(data.Dataset):
@@ -51,8 +92,8 @@ class SignTranslationDataset(data.Dataset):
             path = [path]
 
         samples = {}
-        for annotation_file in path:
-            tmp = load_dataset_file(annotation_file)
+        for split_dir in path:
+            tmp = load_split_dir(split_dir)
             for s in tmp:
                 seq_id = s["name"]
                 if seq_id in samples:
@@ -113,8 +154,8 @@ class SignTranslationDataset3D(data.Dataset):
             path = [path]
 
         samples = {}
-        for annotation_file in path:
-            tmp = load_dataset_file(annotation_file)
+        for split_dir in path:
+            tmp = load_split_dir(split_dir)
             for s in tmp:
                 seq_id = s["name"]
                 if seq_id in samples:

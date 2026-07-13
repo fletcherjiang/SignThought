@@ -10,7 +10,7 @@ import torch
 from torchtext import data
 from torchtext.data import Dataset, Iterator
 import socket
-from main.dataset import SignTranslationDataset
+from main.dataset import SignTranslationDataset, feature_cache_device
 from main.vocabulary import (
     build_vocab,
     Vocabulary,
@@ -89,7 +89,7 @@ def load_data(data_cfg: dict) -> (Dataset, Dataset, Dataset, Vocabulary):
         batch_first=True,
         include_lengths=True,
         postprocessing=stack_features,
-        pad_token=torch.zeros((pad_feature_size,)),
+        pad_token=torch.zeros((pad_feature_size,), device=feature_cache_device()),
     )
 
     txt_field = data.Field(

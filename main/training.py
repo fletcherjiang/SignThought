@@ -57,9 +57,12 @@ class TrainManager:
         train_config = config["training"]
 
         # files for logging and storing
-        self.model_dir = make_model_dir(
-            train_config["model_dir"], overwrite=train_config.get("overwrite", False)
-        )
+        if "load_model" in train_config and os.path.isdir(train_config["model_dir"]):
+            self.model_dir = train_config["model_dir"]
+        else:
+            self.model_dir = make_model_dir(
+                train_config["model_dir"], overwrite=train_config.get("overwrite", False)
+            )
         self.logger = make_logger(model_dir=self.model_dir)
         self.logging_freq = train_config.get("logging_freq", 100)
         self.valid_report_file = "{}/validations.txt".format(self.model_dir)
@@ -102,7 +105,7 @@ class TrainManager:
         # Get Recognition and Translation specific parameters
         self._get_translation_params(train_config=train_config)
 
-        # contrastive / monotonic alignment loss weights (reserved for future use)
+        # structural latent-chain regularization weights
         self.lambda_mono = train_config.get("lambda_mono", 0.0)
         self.lambda_cont = train_config.get("lambda_cont", 0.0)
         self.mono_margin = train_config.get("mono_margin", 1.0)
@@ -442,6 +445,9 @@ class TrainManager:
                         translation_beam_size=self.eval_translation_beam_size,
                         translation_beam_alpha=self.eval_translation_beam_alpha,
                         frame_subsampling_ratio=self.frame_subsampling_ratio,
+                        lambda_mono=self.lambda_mono,
+                        lambda_cont=self.lambda_cont,
+                        mono_margin=self.mono_margin,
                     )
                     self.model.train()
                     self.tb_writer.add_scalar(
@@ -614,6 +620,9 @@ class TrainManager:
             batch=batch,
             translation_loss_function=self.translation_loss_function,
             translation_loss_weight=self.translation_loss_weight,
+            lambda_mono=self.lambda_mono,
+            lambda_cont=self.lambda_cont,
+            mono_margin=self.mono_margin,
         )
 
         # normalize translation loss
@@ -729,9 +738,6 @@ class TrainManager:
             self.logger.info(
                 "\tText Hypothesis :\t%s", txt_res["alignment_out"]["align_hyp"]
             )
-            self.logger.info(
-                "\tText Alignment  :\t%s", txt_res["alignment_out"]["alignment"]
-            )
         self.logger.info("=" * 120)
 
     def _store_outputs(
@@ -825,7 +831,7 @@ def train(cfg_file: str) -> None:
     output_path = os.path.join(trainer.model_dir, output_name)
     logger = trainer.logger
     del trainer
-    test(cfg_file, ckpt=ckpt, output_path=output_path, logger=logger)
+    test(cfg_file, ckpt=ckpt, output_path=output_path, logger=logger, cfg=cfg)
 
 
 if __name__ == "__main__":

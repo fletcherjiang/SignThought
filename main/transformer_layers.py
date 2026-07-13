@@ -42,14 +42,25 @@ class MultiHeadedAttention(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, q: Tensor,  k: Tensor, v: Tensor, mask: Tensor = None):
+    def forward(
+        self,
+        q: Tensor,
+        k: Tensor,
+        v: Tensor,
+        mask: Tensor = None,
+        attn_bias: Tensor = None,
+        return_attention: bool = False,
+    ):
         """
         Computes multi-headed attention.
 
         :param k: keys   [B, M, D] with M being the sentence length.
         :param v: values [B, M, D]
         :param q: query  [B, M, D]
-        :param mask: optional mask [B, 1, M]
+        :param mask: optional mask [B, 1, M] or [B, N, M]
+        :param attn_bias: optional additive attention-logit bias. Accepted shapes
+            are [B, N, M], [B, 1, N, M], or [B, H, N, M].
+        :param return_attention: if True, also return pre-dropout attention probs.
         :return:
         """
         batch_size = k.size(0)
@@ -71,6 +82,13 @@ class MultiHeadedAttention(nn.Module):
         # batch x num_heads x query_len x key_len
         scores = torch.matmul(q, k.transpose(2, 3))
 
+        if attn_bias is not None:
+            if attn_bias.dim() == 3:
+                attn_bias = attn_bias.unsqueeze(1)
+            elif attn_bias.dim() != 4:
+                raise ValueError("attn_bias must have 3 or 4 dimensions")
+            scores = scores + attn_bias.to(dtype=scores.dtype)
+
         # apply the mask (if we have one)
         # we add a dimension for the heads to it below: [B, 1, 1, M]
         if mask is not None:
@@ -78,6 +96,7 @@ class MultiHeadedAttention(nn.Module):
 
         # apply attention dropout and compute context vectors.
         attention = self.softmax(scores)
+        attention_probs = attention
         attention = self.dropout(attention)
 
         # get context vector (select values with attention) and reshape
@@ -91,6 +110,8 @@ class MultiHeadedAttention(nn.Module):
 
         output = self.output_layer(context)
 
+        if return_attention:
+            return output, attention_probs
         return output
 
 
@@ -259,6 +280,7 @@ class TransformerDecoderLayer(nn.Module):
         trg_mask: Tensor = None,
         thought_memory: Tensor = None,
         thought_mask: Tensor = None,
+        thought_routing: dict = None,
     ) -> Tensor:
         """
         Forward pass of a single Transformer decoder layer.
@@ -275,18 +297,31 @@ class TransformerDecoderLayer(nn.Module):
         h1 = self.dropout(h1) + x
 
         # thought-chain attention (if provided)
+        thought_attention = None
         if thought_memory is not None:
             h_thought_norm = self.thought_layer_norm(h1)
-            h_thought = self.thought_trg_att(
-                h_thought_norm, thought_memory, thought_memory, mask=thought_mask
+            h_thought, thought_attention = self.thought_trg_att(
+                h_thought_norm,
+                thought_memory,
+                thought_memory,
+                mask=thought_mask,
+                return_attention=True,
             )
             h_thought = self.dropout_thought(h_thought) + h1
         else:
             h_thought = h1
 
+        routing_bias = self._decoder_routing_bias(
+            thought_attention=thought_attention,
+            thought_routing=thought_routing,
+            memory=memory,
+        )
+
         # source-target attention
         h1_norm = self.dec_layer_norm(h_thought)
-        h2 = self.src_trg_att(h1_norm, memory, memory, mask=src_mask)
+        h2 = self.src_trg_att(
+            h1_norm, memory, memory, mask=src_mask, attn_bias=routing_bias
+        )
         h2 = self.dropout2(h2) + h_thought
 
         # final feed-forward layer
@@ -295,3 +330,34 @@ class TransformerDecoderLayer(nn.Module):
         h3 = self.dropout3(h3) + h2
 
         return h3
+
+    @staticmethod
+    def _decoder_routing_bias(
+        thought_attention: Tensor = None,
+        thought_routing: dict = None,
+        memory: Tensor = None,
+    ) -> Tensor:
+        if thought_attention is None or not thought_routing:
+            return None
+        if not thought_routing.get("enable_decoder_routing", False):
+            return None
+
+        binding = thought_routing.get("binding")
+        segment_weights = thought_routing.get("segment_weights")
+        if binding is None or segment_weights is None:
+            return None
+
+        scale = thought_routing.get("routing_bias_scale", 1.0)
+        if scale == 0:
+            return None
+
+        # Head-averaged token-to-thought attention α, then w = α A Wseg.
+        thought_alpha = thought_attention.mean(dim=1)
+        token_segment = torch.bmm(thought_alpha, binding)
+        token_frame = torch.bmm(token_segment, segment_weights)
+
+        if memory is not None and token_frame.size(-1) != memory.size(1):
+            token_frame = token_frame[..., : memory.size(1)]
+
+        eps = thought_routing.get("eps", 1.0e-6)
+        return scale * torch.log(token_frame.clamp_min(eps))

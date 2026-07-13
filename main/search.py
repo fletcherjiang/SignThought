@@ -12,6 +12,15 @@ from main.helpers import tile
 __all__ = ["greedy", "transformer_greedy", "beam_search"]
 
 
+def _map_routing_cache(thought_routing: dict, map_fn):
+    if thought_routing is None:
+        return None
+    mapped = {}
+    for key, value in thought_routing.items():
+        mapped[key] = map_fn(value) if torch.is_tensor(value) else value
+    return mapped
+
+
 def greedy(
     src_mask: Tensor,
     embed: Embeddings,
@@ -22,6 +31,7 @@ def greedy(
     encoder_output: Tensor,
     encoder_hidden: Tensor,
     thought_states: Tensor = None,
+    thought_routing: dict = None,
 ) -> (np.array, np.array):
     """
     Greedy decoding. Select the token word highest probability at each time
@@ -56,6 +66,7 @@ def greedy(
         encoder_output=encoder_output,
         encoder_hidden=encoder_hidden,
         thought_states=thought_states,
+        thought_routing=thought_routing,
     )
 
 
@@ -69,6 +80,7 @@ def recurrent_greedy(
     encoder_output: Tensor,
     encoder_hidden: Tensor,
     thought_states: Tensor = None,
+    thought_routing: dict = None,
 ) -> (np.array, np.array):
     """
     Greedy decoding: in each step, choose the word that gets highest score.
@@ -139,6 +151,7 @@ def transformer_greedy(
     encoder_output: Tensor,
     encoder_hidden: Tensor,
     thought_states: Tensor = None,
+    thought_routing: dict = None,
 ) -> (np.array, None):
     """
     Special greedy function for transformer, since it works differently.
@@ -181,6 +194,7 @@ def transformer_greedy(
                 hidden=None,
                 trg_mask=trg_mask,
                 thought_states=thought_states,
+                thought_routing=thought_routing,
             )
 
             logits = logits[:, -1]
@@ -214,6 +228,7 @@ def beam_search(
     embed: Embeddings,
     n_best: int = 1,
     thought_states: Tensor = None,
+    thought_routing: dict = None,
 ) -> (np.array, np.array):
     """
     Beam search with size k.
@@ -262,6 +277,9 @@ def beam_search(
     src_mask = tile(src_mask, size, dim=0)  # batch*k x 1 x src_len
     if thought_states is not None and transformer:
         thought_states = tile(thought_states.contiguous(), size, dim=0)
+        thought_routing = _map_routing_cache(
+            thought_routing, lambda value: tile(value.contiguous(), size, dim=0)
+        )
 
     # Transformer only: create target mask
     if transformer:
@@ -328,6 +346,7 @@ def beam_search(
             unroll_steps=1,
             trg_mask=trg_mask,  # subsequent mask for Transformer only
             thought_states=thought_states,
+            thought_routing=thought_routing,
         )
 
         # For the Transformer we made predictions for all time steps up to
@@ -429,6 +448,9 @@ def beam_search(
         src_mask = src_mask.index_select(0, select_indices)
         if thought_states is not None and transformer:
             thought_states = thought_states.index_select(0, select_indices)
+            thought_routing = _map_routing_cache(
+                thought_routing, lambda value: value.index_select(0, select_indices)
+            )
 
         if hidden is not None and not transformer:
             if isinstance(hidden, tuple):

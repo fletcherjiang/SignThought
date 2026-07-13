@@ -72,6 +72,7 @@ class SignModel(nn.Module):
         sgn_lengths: Tensor,
         txt_input: Tensor,
         txt_mask: Tensor = None,
+        return_thought_aux: bool = False,
     ) -> (Tensor, Tensor, Tensor, Tensor):
         """
         First encodes the source sentence.
@@ -89,6 +90,9 @@ class SignModel(nn.Module):
         )
 
         unroll_steps = txt_input.size(1)
+        thought_states, thought_routing = self._compute_thoughts(
+            encoder_output=encoder_output, sgn_mask=sgn_mask
+        )
         decoder_outputs = self.decode(
             encoder_output=encoder_output,
             encoder_hidden=encoder_hidden,
@@ -96,11 +100,12 @@ class SignModel(nn.Module):
             txt_input=txt_input,
             unroll_steps=unroll_steps,
             txt_mask=txt_mask,
-            thought_states=self._compute_thoughts(
-                encoder_output=encoder_output, sgn_mask=sgn_mask
-            ),
+            thought_states=thought_states,
+            thought_routing=thought_routing,
         )
 
+        if return_thought_aux:
+            return decoder_outputs, thought_routing
         return decoder_outputs
 
     def encode(
@@ -130,6 +135,7 @@ class SignModel(nn.Module):
         decoder_hidden: Tensor = None,
         txt_mask: Tensor = None,
         thought_states: Tensor = None,
+        thought_routing: dict = None,
     ) -> (Tensor, Tensor, Tensor, Tensor):
         """
         Decode, given an encoded source sentence.
@@ -152,11 +158,12 @@ class SignModel(nn.Module):
             unroll_steps=unroll_steps,
             hidden=decoder_hidden,
             thought_states=thought_states,
+            thought_routing=thought_routing,
         )
 
-    def _compute_thoughts(self, encoder_output: Tensor, sgn_mask: Tensor) -> Tensor:
+    def _compute_thoughts(self, encoder_output: Tensor, sgn_mask: Tensor):
         if self.thinking is None:
-            return None
+            return None, None
         return self.thinking(encoder_output=encoder_output, src_mask=sgn_mask)
 
     def get_loss_for_batch(
@@ -164,6 +171,9 @@ class SignModel(nn.Module):
         batch: Batch,
         translation_loss_function: nn.Module,
         translation_loss_weight: float,
+        lambda_mono: float = 0.0,
+        lambda_cont: float = 0.0,
+        mono_margin: float = 1.0,
     ) -> Tensor:
         """
         Compute non-normalized loss and number of tokens for a batch
@@ -174,12 +184,13 @@ class SignModel(nn.Module):
         :return: translation_loss: sum of losses over non-pad elements in the batch
         """
         # Do a forward pass
-        decoder_outputs = self.forward(
+        decoder_outputs, thought_routing = self.forward(
             sgn=batch.sgn,
             sgn_mask=batch.sgn_mask,
             sgn_lengths=batch.sgn_lengths,
             txt_input=batch.txt_input,
             txt_mask=batch.txt_mask,
+            return_thought_aux=True,
         )
 
         word_outputs, _, _, _ = decoder_outputs
@@ -189,6 +200,16 @@ class SignModel(nn.Module):
             translation_loss_function(txt_log_probs, batch.txt)
             * translation_loss_weight
         )
+
+        if self.thinking is not None and (lambda_mono or lambda_cont):
+            structural_loss = self.thinking.structural_loss(
+                routing_cache=thought_routing,
+                lambda_mono=lambda_mono,
+                lambda_cont=lambda_cont,
+                mono_margin=mono_margin,
+            )
+            if structural_loss is not None:
+                translation_loss = translation_loss + structural_loss * batch.num_seqs
 
         return translation_loss
 
@@ -214,7 +235,7 @@ class SignModel(nn.Module):
         encoder_output, encoder_hidden = self.encode(
             sgn=batch.sgn, sgn_mask=batch.sgn_mask, sgn_length=batch.sgn_lengths
         )
-        thought_states = self._compute_thoughts(
+        thought_states, thought_routing = self._compute_thoughts(
             encoder_output=encoder_output, sgn_mask=batch.sgn_mask
         )
 
@@ -230,6 +251,7 @@ class SignModel(nn.Module):
                 decoder=self.decoder,
                 max_output_length=translation_max_output_length,
                 thought_states=thought_states,
+                thought_routing=thought_routing,
             )
         else:  # beam size
             stacked_txt_output, stacked_attention_scores = beam_search(
@@ -245,6 +267,7 @@ class SignModel(nn.Module):
                 bos_index=self.txt_bos_index,
                 decoder=self.decoder,
                 thought_states=thought_states,
+                thought_routing=thought_routing,
             )
 
         return stacked_txt_output, stacked_attention_scores

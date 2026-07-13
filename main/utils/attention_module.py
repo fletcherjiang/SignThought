@@ -3,8 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 from main.position_encoding import PositionalEncoding, CoPE
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
 
 class Linear(nn.Linear):

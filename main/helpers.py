@@ -24,6 +24,51 @@ import yaml
 from main.vocabulary import TextVocabulary
 
 
+_FIXED_DATA_CONFIG = {
+    "feature_size": 1024,
+    "level": "word",
+    "txt_lowercase": True,
+    "max_sent_length": 400,
+    "random_train_subset": -1,
+    "random_dev_subset": -1,
+    "multimodal": 0.0,
+}
+
+_FIXED_TRAINING_CONFIG = {
+    "reset_best_ckpt": False,
+    "reset_scheduler": False,
+    "reset_optimizer": False,
+    "overwrite": True,
+    "shuffle": True,
+    "use_cuda": True,
+    "translation_max_output_length": 30,
+    "keep_last_ckpts": 1,
+    "batch_multiplier": 1,
+    "logging_freq": 100,
+    "validation_freq": 200,
+    "betas": [0.95, 0.998],
+    "scheduling": "plateau",
+    "learning_rate_min": 1.0e-6,
+    "weight_decay": 0.003,
+}
+
+_FIXED_MODEL_CONFIG = {
+    "initializer": "xavier",
+    "bias_initializer": "zeros",
+    "init_gain": 1.0,
+    "embed_initializer": "xavier",
+    "embed_init_gain": 1.0,
+    "tied_softmax": False,
+}
+
+
+def _apply_fixed_config(cfg: dict) -> dict:
+    cfg.setdefault("data", {}).update(_FIXED_DATA_CONFIG)
+    cfg.setdefault("training", {}).update(_FIXED_TRAINING_CONFIG)
+    cfg.setdefault("model", {}).update(_FIXED_MODEL_CONFIG)
+    return cfg
+
+
 def make_model_dir(model_dir: str, overwrite: bool = False) -> str:
     """
     Create a new directory for the model.
@@ -160,6 +205,8 @@ def load_config(path="configs/default.yaml") -> dict:
     """
     with open(path, "r", encoding="utf-8") as ymlfile:
         cfg = yaml.safe_load(ymlfile)
+
+    cfg = _apply_fixed_config(cfg)
     
     # Handle dynamic timestamp for model_dir
     if "training" in cfg and "model_dir" in cfg["training"]:

@@ -56,13 +56,13 @@ Download the Pre-extracted features from the links below and place them under `d
 ```
 data/
 ├── PHOENIX2014T/
-│   ├── phoenix14t.train
-│   ├── phoenix14t.dev
-│   └── phoenix14t.test
+│   ├── train
+│   ├── dev
+│   └── test
 └── csl/
-    ├── csl.train
-    ├── csl.dev
-    └── csl.test
+    ├── train
+    ├── dev
+    └── test
 ```
 
 ## Training
@@ -70,9 +70,6 @@ data/
 ```bash
 # PHOENIX2014T
 CUDA_VISIBLE_DEVICES=0 python -m main train configs/sign_phoenix.yaml
-
-# CSL-Daily
-CUDA_VISIBLE_DEVICES=0 python -m main train configs/sign_csl.yaml
 ```
 
 ## Inference
@@ -81,10 +78,6 @@ CUDA_VISIBLE_DEVICES=0 python -m main train configs/sign_csl.yaml
 # PHOENIX2014T
 CUDA_VISIBLE_DEVICES=0 python -m main test configs/sign_phoenix.yaml \
     --ckpt experiment_results/phoenix14t_auto/best.ckpt
-
-# CSL-Daily
-CUDA_VISIBLE_DEVICES=0 python -m main test configs/sign_csl.yaml \
-    --ckpt experiment_results/csl_auto/best.ckpt
 ```
 
 ## Configuration

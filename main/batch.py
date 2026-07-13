@@ -52,12 +52,13 @@ class Batch:
                 else:
                     init_frame = math.floor((frame_subsampling_ratio - 1) / 2)
 
-                tmp_data = features[: length.long(), :]
+                valid_len = int(length.long().item())
+                tmp_data = features[:valid_len, :]
                 tmp_data = tmp_data[init_frame::frame_subsampling_ratio]
                 tmp_sgn[idx, 0 : tmp_data.shape[0]] = tmp_data
                 tmp_sgn_lengths[idx] = tmp_data.shape[0]
 
-            self.sgn = tmp_sgn[:, : tmp_sgn_lengths.max().long(), :]
+            self.sgn = tmp_sgn[:, : int(tmp_sgn_lengths.max().long().item()), :]
             self.sgn_lengths = tmp_sgn_lengths
 
         if random_frame_masking_ratio and is_train:
@@ -67,15 +68,21 @@ class Batch:
             )
             for idx, features in enumerate(self.sgn):
                 features = features.clone()
-                mask_frame_idx = np.random.permutation(
-                    int(self.sgn_lengths[idx].long().numpy())
-                )[: num_mask_frames[idx]]
+                mask_frame_idx = torch.as_tensor(
+                    np.random.permutation(
+                        int(self.sgn_lengths[idx].long().numpy())
+                    )[: int(num_mask_frames[idx].item())],
+                    dtype=torch.long,
+                    device=features.device,
+                )
                 features[mask_frame_idx, :] = 1e-8
                 tmp_sgn[idx] = features
             self.sgn = tmp_sgn
 
         self.sgn_dim = sgn_dim
-        self.sgn_mask = (self.sgn != torch.zeros(sgn_dim))[..., 0].unsqueeze(1)
+        self.sgn_mask = (
+            self.sgn != self.sgn.new_zeros(sgn_dim)
+        )[..., 0].unsqueeze(1)
 
         # Text
         self.txt = None
@@ -108,8 +115,10 @@ class Batch:
 
         :return:
         """
-        self.sgn = self.sgn.cuda()
-        self.sgn_mask = self.sgn_mask.cuda()
+        if not self.sgn.is_cuda:
+            self.sgn = self.sgn.cuda()
+        if not self.sgn_mask.is_cuda:
+            self.sgn_mask = self.sgn_mask.cuda()
 
         if self.txt_input is not None:
             self.txt = self.txt.cuda()

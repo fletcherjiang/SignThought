@@ -46,6 +46,9 @@ def validate_on_data(
     batch_type: str = "sentence",
     dataset_version: str = "phoenix_2014_trans",
     frame_subsampling_ratio: int = None,
+    lambda_mono: float = 0.0,
+    lambda_cont: float = 0.0,
+    mono_margin: float = 1.0,
 ) -> Dict:
     """
     Generate translations for the given data.
@@ -69,6 +72,9 @@ def validate_on_data(
     :param batch_type: validation batch type (sentence or token)
     :param dataset_version: phoenix_2014 or phoenix_2014_trans
     :param frame_subsampling_ratio: frame subsampling ratio
+    :param lambda_mono: monotonicity regularization weight
+    :param lambda_cont: contiguity regularization weight
+    :param mono_margin: monotonicity margin
 
     :return: dictionary with validation results
     """
@@ -104,6 +110,9 @@ def validate_on_data(
                 batch=batch,
                 translation_loss_function=translation_loss_function,
                 translation_loss_weight=translation_loss_weight,
+                lambda_mono=lambda_mono,
+                lambda_cont=lambda_cont,
+                mono_margin=mono_margin,
             )
             total_translation_loss += batch_translation_loss
             total_num_txt_tokens += batch.num_txt_tokens
@@ -181,7 +190,11 @@ def validate_on_data(
 
 # pylint: disable-msg=logging-too-many-args
 def test(
-    cfg_file, ckpt: str, output_path: str = None, logger: logging.Logger = None
+    cfg_file,
+    ckpt: str,
+    output_path: str = None,
+    logger: logging.Logger = None,
+    cfg: dict = None,
 ) -> None:
     """
     Main test function. Handles loading a model from checkpoint, generating
@@ -191,6 +204,7 @@ def test(
     :param ckpt: path to checkpoint to load
     :param output_path: path to output
     :param logger: log output to this logger (creates new logger if not set)
+    :param cfg: already loaded configuration, used by training-time final test
     """
 
     if logger is None:
@@ -200,7 +214,8 @@ def test(
             logging.basicConfig(format=FORMAT)
             logger.setLevel(level=logging.DEBUG)
 
-    cfg = load_config(cfg_file)
+    if cfg is None:
+        cfg = load_config(cfg_file)
 
     if "test" not in cfg["data"].keys():
         raise ValueError("Test data must be specified in config.")
@@ -222,6 +237,9 @@ def test(
     translation_max_output_length = cfg["training"].get(
         "translation_max_output_length", None
     )
+    lambda_mono = cfg["training"].get("lambda_mono", 0.0)
+    lambda_cont = cfg["training"].get("lambda_cont", 0.0)
+    mono_margin = cfg["training"].get("mono_margin", 1.0)
 
     # load the data
     _, dev_data, test_data, txt_vocab = load_data(data_cfg=cfg["data"])
@@ -296,6 +314,9 @@ def test(
                 translation_beam_size=tbw,
                 translation_beam_alpha=ta,
                 frame_subsampling_ratio=frame_subsampling_ratio,
+                lambda_mono=lambda_mono,
+                lambda_cont=lambda_cont,
+                mono_margin=mono_margin,
             )
 
             if (
@@ -371,6 +392,9 @@ def test(
         translation_beam_size=dev_best_translation_beam_size,
         translation_beam_alpha=dev_best_translation_alpha,
         frame_subsampling_ratio=frame_subsampling_ratio,
+        lambda_mono=lambda_mono,
+        lambda_cont=lambda_cont,
+        mono_margin=mono_margin,
     )
 
     logger.info(
