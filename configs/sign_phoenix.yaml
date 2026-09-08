@@ -21,7 +21,7 @@ training:
     learning_rate: 0.001
     batch_size: 32
     num_valid_log: 6
-    epochs: 200
+    epochs: 500
     early_stopping_metric: eval_metric
     batch_type: sentence
     translation_normalization: batch
