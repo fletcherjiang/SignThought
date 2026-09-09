@@ -28,7 +28,7 @@ training:
     eval_translation_beam_size: 7
     eval_translation_beam_alpha: 4
     decrease_factor: 0.8
-    patience: 30
+    patience: 1000
     label_smoothing: 0.1
     warmup_step: 2000
     lambda_mono: 0.1
