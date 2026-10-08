@@ -1,4 +1,5 @@
 # Think in Latent Thoughts: A New Paradigm for Gloss-Free Sign Language Translation
+[![Dataset](https://img.shields.io/badge/🤗%20Hugging%20Face-LC--HKSLT%20Dataset-yellow)](https://huggingface.co/datasets/fletcherjiang/LC-HKSLT)
 
 > **Accepted at ACL 2026 (Main)**
 
